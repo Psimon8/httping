@@ -3,7 +3,10 @@ import streamlit as st
 import requests
 import schedule
 import time
+import pandas as pd
+import altair as alt
 from threading import Thread
+from datetime import datetime
 
 # Set Streamlit page configuration
 st.set_page_config(page_title="URL Monitor", layout="wide", page_icon="🥕")
@@ -14,25 +17,34 @@ USER_AGENTS = {
     "GoogleBot": "Mozilla/5.0 (Linux; Android 6.0.1; Nexus 5X Build/MMB29P) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.96 Mobile Safari/537.36 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 }
 
-# Check HTTP response code
+# Data storage
+response_times = {"Chrome": [], "GoogleBot": []}
+
+# Check HTTP response code and response time
 def check_url(url, user_agent):
     headers = {"User-Agent": user_agent}
     try:
+        start_time = time.time()
         response = requests.get(url, headers=headers, timeout=5)
-        return response.status_code
+        response_time = (time.time() - start_time) * 1000  # Convert to ms
+        return response.status_code, response_time
     except requests.RequestException as e:
-        return str(e)
+        return str(e), None
 
 # Update the status of all URLs
-def update_status(urls, status_dict):
+def update_status(urls, status_dict, response_times):
     for url in urls:
+        chrome_status, chrome_time = check_url(url, USER_AGENTS["Chrome"])
+        googlebot_status, googlebot_time = check_url(url, USER_AGENTS["GoogleBot"])
         status_dict[url] = {
-            "Chrome": check_url(url, USER_AGENTS["Chrome"]),
-            "GoogleBot": check_url(url, USER_AGENTS["GoogleBot"])
+            "Chrome": chrome_status,
+            "GoogleBot": googlebot_status
         }
+        response_times["Chrome"].append({"time": datetime.now(), "response_time": chrome_time})
+        response_times["GoogleBot"].append({"time": datetime.now(), "response_time": googlebot_time})
 
 # Periodic check in a separate thread
-def periodic_check(urls, status_dict):
+def periodic_check(urls, status_dict, response_times):
     while True:
         schedule.run_pending()
         time.sleep(1)
@@ -61,20 +73,39 @@ def main():
 
     # Schedule the update every 5 minutes
     if st.button("Start Monitoring"):
-        schedule.every(5).minutes.do(update_status, urls, status_dict)
+        schedule.every(5).minutes.do(update_status, urls, status_dict, response_times)
 
         # Start periodic check in a separate thread
-        checker_thread = Thread(target=periodic_check, args=(urls, status_dict))
+        checker_thread = Thread(target=periodic_check, args=(urls, status_dict, response_times))
         checker_thread.daemon = True
         checker_thread.start()
         st.success("Monitoring started.")
 
     if st.button("Check Now"):
-        update_status(urls, status_dict)
+        update_status(urls, status_dict, response_times)
         display_status()
 
     # Initial display
     display_status()
+
+    # Display response time graphs
+    st.subheader("Response Time Graphs")
+
+    if response_times["Chrome"]:
+        df_chrome = pd.DataFrame(response_times["Chrome"])
+        chart_chrome = alt.Chart(df_chrome).mark_line().encode(
+            x='time:T',
+            y='response_time:Q'
+        ).properties(title='Chrome Response Time')
+        st.altair_chart(chart_chrome, use_container_width=True)
+
+    if response_times["GoogleBot"]:
+        df_googlebot = pd.DataFrame(response_times["GoogleBot"])
+        chart_googlebot = alt.Chart(df_googlebot).mark_line().encode(
+            x='time:T',
+            y='response_time:Q'
+        ).properties(title='GoogleBot Response Time')
+        st.altair_chart(chart_googlebot, use_container_width=True)
 
 if __name__ == "__main__":
     main()

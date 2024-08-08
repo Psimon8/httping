@@ -5,6 +5,13 @@ import schedule
 import time
 from threading import Thread
 
+st.set_page_config(
+    layout="wide",
+    page_title="HTTP Rescode Check",
+    page_icon="🥕"
+)
+
+
 # Check HTTP response code
 def check_url(url):
     try:

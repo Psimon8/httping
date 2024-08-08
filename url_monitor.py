@@ -19,9 +19,7 @@ USER_AGENTS = {
 
 # Data storage
 response_times = {"Chrome": [], "GoogleBot": []}
-
-# Stop event for the monitoring thread
-stop_event = Event()
+monitor_threads = {}
 
 # Check HTTP response code and response time
 def check_url(url, user_agent):
@@ -47,10 +45,10 @@ def update_status(urls, status_dict, response_times):
         response_times["GoogleBot"].append({"time": datetime.now(), "response_time": googlebot_time})
 
 # Periodic check in a separate thread
-def periodic_check(urls, status_dict, response_times, stop_event):
+def periodic_check(url, status_dict, response_times, stop_event):
     while not stop_event.is_set():
-        schedule.run_pending()
-        time.sleep(1)
+        update_status([url], status_dict, response_times)
+        time.sleep(300)  # Check every 5 minutes
 
 # Streamlit UI
 def main():
@@ -75,23 +73,26 @@ def main():
                 st.write(f"  GoogleBot: {statuses['GoogleBot']}")
 
     if 'monitoring' not in st.session_state:
-        st.session_state.monitoring = False
+        st.session_state.monitoring = {}
 
-    if st.button("Start Monitoring") and not st.session_state.monitoring:
-        st.session_state.monitoring = True
-        stop_event.clear()
-        schedule.every(5).minutes.do(update_status, urls, status_dict, response_times)
-
-        # Start periodic check in a separate thread
-        checker_thread = Thread(target=periodic_check, args=(urls, status_dict, response_times, stop_event))
-        checker_thread.daemon = True
-        checker_thread.start()
+    if st.button("Start Monitoring"):
+        for url in urls:
+            if url not in st.session_state.monitoring:
+                stop_event = Event()
+                thread = Thread(target=periodic_check, args=(url, status_dict, response_times, stop_event))
+                thread.daemon = True
+                thread.start()
+                st.session_state.monitoring[url] = stop_event
         st.success("Monitoring started.")
 
-    if st.button("Stop Monitoring") and st.session_state.monitoring:
-        st.session_state.monitoring = False
-        stop_event.set()
-        st.success("Monitoring stopped.")
+    active_monitoring = list(st.session_state.monitoring.keys())
+    if active_monitoring:
+        selected_monitor = st.selectbox("Select URL to stop monitoring", active_monitoring)
+        if st.button("Stop Monitoring for Selected URL"):
+            stop_event = st.session_state.monitoring.pop(selected_monitor, None)
+            if stop_event:
+                stop_event.set()
+                st.success(f"Monitoring stopped for {selected_monitor}")
 
     if st.button("Check Now"):
         update_status(urls, status_dict, response_times)

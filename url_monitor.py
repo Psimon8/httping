@@ -1,12 +1,10 @@
-# File: url_monitor.py
-
 import streamlit as st
 import requests
 import schedule
 import time
 from threading import Thread
 
-# Function to check HTTP response code
+# Check HTTP response code
 def check_url(url):
     try:
         response = requests.get(url)
@@ -14,12 +12,12 @@ def check_url(url):
     except requests.RequestException as e:
         return str(e)
 
-# Function to update the status of all URLs
+# Update the status of all URLs
 def update_status(urls, status_dict):
     for url in urls:
         status_dict[url] = check_url(url)
 
-# Function to run the periodic check in a separate thread
+# Periodic check in a separate thread
 def periodic_check(urls, status_dict):
     while True:
         schedule.run_pending()
@@ -28,14 +26,14 @@ def periodic_check(urls, status_dict):
 # Streamlit UI
 def main():
     st.title("URL Monitor")
-    
+
     # Load URL list
     urls = st.text_area("Enter URLs (one per line)", height=200).split("\n")
     urls = [url.strip() for url in urls if url.strip()]
-    
+
     # Status dictionary
     status_dict = {url: "Not Checked" for url in urls}
-    
+
     # Display current status
     st.subheader("URL Status")
     for url, status in status_dict.items():
@@ -43,11 +41,11 @@ def main():
 
     # Schedule the update every 5 minutes
     schedule.every(5).minutes.do(update_status, urls, status_dict)
-    
+
     # Start periodic check in a separate thread
     checker_thread = Thread(target=periodic_check, args=(urls, status_dict))
     checker_thread.start()
-    
+
     # Button to manually update status
     if st.button("Check Now"):
         update_status(urls, status_dict)

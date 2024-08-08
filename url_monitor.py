@@ -11,7 +11,6 @@ st.set_page_config(
     page_icon="🥕"
 )
 
-
 # Check HTTP response code
 def check_url(url):
     try:

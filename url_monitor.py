@@ -9,7 +9,7 @@ from threading import Thread
 # Check HTTP response code
 def check_url(url):
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=5)
         return response.status_code
     except requests.RequestException as e:
         return str(e)
@@ -42,8 +42,18 @@ def main():
         st.write(f"{url}: {status}")
 
     # Schedule the update every 5 minutes
-    schedule.every(5).minutes.do(update_status, urls, status_dict)
+    if st.button("Start Monitoring"):
+        schedule.every(5).minutes.do(update_status, urls, status_dict)
 
-    # Start periodic check in a separate thread
-    checker_thread = Thread(target=periodic_check, args=(urls, status_dict))
-    checker_thread.start()
+        # Start periodic check in a separate thread
+        checker_thread = Thread(target=periodic_check, args=(urls, status_dict))
+        checker_thread.daemon = True
+        checker_thread.start()
+        st.success("Monitoring started.")
+
+    if st.button("Check Now"):
+        update_status(urls, status_dict)
+        st.experimental_rerun()
+
+if __name__ == "__main__":
+    main()

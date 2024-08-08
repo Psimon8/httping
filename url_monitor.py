@@ -19,9 +19,7 @@ USER_AGENTS = {
 
 # Data storage
 response_times = {"Chrome": [], "GoogleBot": []}
-
-# Stop event for the monitoring thread
-stop_event = Event()
+monitor_threads = {}
 
 # Check HTTP response code and response time
 def check_url(url, user_agent):
@@ -52,6 +50,10 @@ def periodic_check(url, status_dict, response_times, stop_event):
         update_status([url], status_dict, response_times)
         time.sleep(300)  # Check every 5 minutes
 
+# Initialize session state
+if 'monitoring' not in st.session_state:
+    st.session_state.monitoring = {}
+
 # Streamlit UI
 def main():
     st.title("URL Monitor")
@@ -73,9 +75,6 @@ def main():
                 st.write(f"{url}:")
                 st.write(f"  Chrome: {statuses['Chrome']}")
                 st.write(f"  GoogleBot: {statuses['GoogleBot']}")
-
-    if 'monitoring' not in st.session_state:
-        st.session_state.monitoring = {}
 
     if st.button("Start Monitoring"):
         for url in urls:

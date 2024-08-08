@@ -1,5 +1,4 @@
 import os
-import sys
 import streamlit as st
 import requests
 import schedule
@@ -27,6 +26,7 @@ def periodic_check(urls, status_dict):
 
 # Streamlit UI
 def main():
+    st.set_page_config(page_title="URL Monitor", layout="wide")
     st.title("URL Monitor")
 
     # Load URL list
@@ -38,8 +38,12 @@ def main():
 
     # Display current status
     st.subheader("URL Status")
-    for url, status in status_dict.items():
-        st.write(f"{url}: {status}")
+    status_placeholder = st.empty()
+
+    def display_status():
+        with status_placeholder.container():
+            for url, status in status_dict.items():
+                st.write(f"{url}: {status}")
 
     # Schedule the update every 5 minutes
     if st.button("Start Monitoring"):
@@ -53,7 +57,10 @@ def main():
 
     if st.button("Check Now"):
         update_status(urls, status_dict)
-        st.experimental_set_query_params()  # Use this to trigger a rerun
+        display_status()
+
+    # Initial display
+    display_status()
 
 if __name__ == "__main__":
     main()

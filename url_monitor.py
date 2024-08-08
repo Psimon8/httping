@@ -5,11 +5,8 @@ import schedule
 import time
 from threading import Thread
 
-st.set_page_config(
-    layout="wide",
-    page_title="HTTP Rescode Check",
-    page_icon="🥕"
-)
+# Set Streamlit page configuration
+st.set_page_config(page_title="URL Monitor", layout="wide", page_icon="🥕")
 
 # Check HTTP response code
 def check_url(url):
@@ -32,7 +29,6 @@ def periodic_check(urls, status_dict):
 
 # Streamlit UI
 def main():
-    st.set_page_config(page_title="URL Monitor", layout="wide")
     st.title("URL Monitor")
 
     # Load URL list

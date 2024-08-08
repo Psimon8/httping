@@ -5,7 +5,7 @@ import schedule
 import time
 import pandas as pd
 import altair as alt
-from threading import Thread
+from threading import Thread, Event
 from datetime import datetime
 
 # Set Streamlit page configuration
@@ -19,6 +19,9 @@ USER_AGENTS = {
 
 # Data storage
 response_times = {"Chrome": [], "GoogleBot": []}
+
+# Stop event for the monitoring thread
+stop_event = Event()
 
 # Check HTTP response code and response time
 def check_url(url, user_agent):
@@ -44,8 +47,8 @@ def update_status(urls, status_dict, response_times):
         response_times["GoogleBot"].append({"time": datetime.now(), "response_time": googlebot_time})
 
 # Periodic check in a separate thread
-def periodic_check(urls, status_dict, response_times):
-    while True:
+def periodic_check(urls, status_dict, response_times, stop_event):
+    while not stop_event.is_set():
         schedule.run_pending()
         time.sleep(1)
 
@@ -71,15 +74,24 @@ def main():
                 st.write(f"  Chrome: {statuses['Chrome']}")
                 st.write(f"  GoogleBot: {statuses['GoogleBot']}")
 
-    # Schedule the update every 5 minutes
-    if st.button("Start Monitoring"):
+    if 'monitoring' not in st.session_state:
+        st.session_state.monitoring = False
+
+    if st.button("Start Monitoring") and not st.session_state.monitoring:
+        st.session_state.monitoring = True
+        stop_event.clear()
         schedule.every(5).minutes.do(update_status, urls, status_dict, response_times)
 
         # Start periodic check in a separate thread
-        checker_thread = Thread(target=periodic_check, args=(urls, status_dict, response_times))
+        checker_thread = Thread(target=periodic_check, args=(urls, status_dict, response_times, stop_event))
         checker_thread.daemon = True
         checker_thread.start()
         st.success("Monitoring started.")
+
+    if st.button("Stop Monitoring") and st.session_state.monitoring:
+        st.session_state.monitoring = False
+        stop_event.set()
+        st.success("Monitoring stopped.")
 
     if st.button("Check Now"):
         update_status(urls, status_dict, response_times)

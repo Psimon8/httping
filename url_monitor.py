@@ -19,7 +19,9 @@ USER_AGENTS = {
 
 # Data storage
 response_times = {"Chrome": [], "GoogleBot": []}
-monitor_threads = {}
+
+# Stop event for the monitoring thread
+stop_event = Event()
 
 # Check HTTP response code and response time
 def check_url(url, user_agent):

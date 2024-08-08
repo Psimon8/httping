@@ -53,7 +53,7 @@ def main():
 
     if st.button("Check Now"):
         update_status(urls, status_dict)
-        st.experimental_rerun()
+        st.experimental_set_query_params()  # Use this to trigger a rerun
 
 if __name__ == "__main__":
     main()
